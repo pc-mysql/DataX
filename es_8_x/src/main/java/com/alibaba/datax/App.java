@@ -1,7 +1,9 @@
 package com.alibaba.datax;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
+import co.elastic.clients.elasticsearch.indices.ElasticsearchIndicesClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
@@ -9,6 +11,7 @@ import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.elasticsearch.client.RestClient;
@@ -18,12 +21,9 @@ import java.io.IOException;
 
 /**
  * Hello world!
- *
  */
-public class App 
-{
-    public static void main( String[] args )
-    {
+public class App {
+    public static void main(String[] args) {
 
         String IP = "127.0.0.1";
         int PORT = 9200;
@@ -34,16 +34,27 @@ public class App
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(AuthScope.ANY,
                 new UsernamePasswordCredentials(userName, passWord));  //es账号密码
-        RestClient http = RestClient.builder(
+        RestClientBuilder http = RestClient.builder(
                 new HttpHost(IP, PORT, "http")).setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
             public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpClientBuilder) {
                 httpClientBuilder.disableAuthCaching();
-                return httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                return httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider).setMaxConnTotal(200);
             }
-        }).build();
+        });
+        RestClientBuilder restClientBuilder =
+                http.setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback() {
+                    @Override
+                    public RequestConfig.Builder customizeRequestConfig(RequestConfig.Builder requestConfigBuilder) {
+                        return requestConfigBuilder.setConnectTimeout(5000).setSocketTimeout(60000).setContentCompressionEnabled(true);
+                    }
+
+                });
+        RestClient build = http.build();
+
+
 
         ElasticsearchTransport transport = new RestClientTransport(
-                http,
+                build,
                 new JacksonJsonpMapper()
         );
 
@@ -54,11 +65,13 @@ public class App
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        new Builder();
-
+        ElasticsearchIndicesClient indices = esClient.indices();
+        new CreateIndexRequest.Builder().index("index_test").build();
+        indices.create()
 //        RestHighLevelClient client = new RestHighLevelClient(
 //                RestClient.builder(
-//                        new HttpHost(IP, PORT, "http")).setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
+//                        new HttpHost(IP, PORT, "http")).setHttpClientConfigCallback(new RestClientBuilder
+//                        .HttpClientConfigCallback() {
 //                    public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpClientBuilder) {
 //                        httpClientBuilder.disableAuthCaching();
 //                        return httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
