@@ -200,8 +200,9 @@ public class ESWriter extends Writer {
                     300000,
                     false,
                     false);
+
             String alias = Key.getAlias(conf);
-            if (!"".equals(alias)) {
+            if (!"".equals(alias)) {        //这个里面为什么会有alias
                 log.info(String.format("alias [%s] to [%s]", alias, Key.getIndexName(conf)));
                 try {
                     esClient.alias(Key.getIndexName(conf), alias, Key.isNeedCleanAlias(conf));
@@ -267,11 +268,11 @@ public class ESWriter extends Writer {
         }
 
         @Override
-        public void startWrite(RecordReceiver recordReceiver) {
+        public void startWrite(RecordReceiver recordReceiver) {     //开始读写
             List<Record> writerBuffer = new ArrayList<Record>(this.batchSize);
             Record record = null;
             long total = 0;
-            while ((record = recordReceiver.getFromReader()) != null) {
+            while ((record = recordReceiver.getFromReader()) != null) {     //每次从里面取一些东西
                 writerBuffer.add(record);
                 if (writerBuffer.size() >= this.batchSize) {
                     total += doBatchInsert(writerBuffer);
@@ -311,6 +312,7 @@ public class ESWriter extends Writer {
 
         private long doBatchInsert(final List<Record> writerBuffer) {
             Map<String, Object> data = null;
+
             final Bulk.Builder bulkaction = new Bulk.Builder().defaultIndex(this.index).defaultType(this.type);
             for (Record record : writerBuffer) {
                 data = new HashMap<String, Object>();

@@ -30,7 +30,7 @@ public final class ConfigParser {
                 false);
         // todo config优化，只捕获需要的plugin
         String readerPluginName = configuration.getString(
-                CoreConstant.DATAX_JOB_CONTENT_READER_NAME);
+                CoreConstant.DATAX_JOB_CONTENT_READER_NAME);    //得到读插件的名字
         String writerPluginName = configuration.getString(
                 CoreConstant.DATAX_JOB_CONTENT_WRITER_NAME);
 
@@ -120,7 +120,7 @@ public final class ConfigParser {
 
         Set<String> replicaCheckPluginSet = new HashSet<String>();
         int complete = 0;
-        for (final String each : ConfigParser
+        for (final String each : ConfigParser                       //读取reawder,plugin内的东西
                 .getDirAsList(CoreConstant.DATAX_PLUGIN_READER_HOME)) {
             Configuration eachReaderConfig = ConfigParser.parseOnePluginConfig(each, "reader", replicaCheckPluginSet, wantPluginNames);
             if(eachReaderConfig!=null) {
@@ -161,7 +161,8 @@ public final class ConfigParser {
         }
 
         //不是想要的插件，返回null
-        if (wantPluginNames != null && wantPluginNames.size() > 0 && !wantPluginNames.contains(pluginName)) {
+        if (wantPluginNames != null && wantPluginNames.size() > 0 && !wantPluginNames.contains(pluginName))
+        {
             return null;
         }
 

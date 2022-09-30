@@ -42,6 +42,7 @@
     </properties>
 
     <modules>
+        <module>elasticsearchwriter2</module>
         <module>common</module>
         <module>core</module>
         <module>transformer</module>

@@ -179,7 +179,7 @@ public class ESClient {
         return jsonObject.has("items");
     }
 
-
+    //这个用来
     public boolean alias(String indexname, String aliasname, boolean needClean) throws IOException {
         GetAliases getAliases = new GetAliases.Builder().addIndex(aliasname).build();
         AliasMapping addAliasMapping = new AddAliasMapping.Builder(indexname, aliasname).build();

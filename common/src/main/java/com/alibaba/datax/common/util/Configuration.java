@@ -94,6 +94,7 @@ public class Configuration {
 		} catch (FileNotFoundException e) {
 			throw DataXException.asDataXException(CommonErrorCode.CONFIG_ERROR,
 					String.format("配置信息错误，您提供的配置文件[%s]不存在. 请检查您的配置文件.", file.getAbsolutePath()));
+
 		} catch (IOException e) {
 			throw DataXException.asDataXException(
 					CommonErrorCode.CONFIG_ERROR,
@@ -959,7 +960,7 @@ public class Configuration {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Object findObjectInMap(final Object target, final String index) {
+	private Object findObjectInMap(final Object target, final String index) {		//找到json文件
 		boolean isMap = (target instanceof Map);
 		if (!isMap) {
 			throw new IllegalArgumentException(String.format(
@@ -968,10 +969,10 @@ public class Configuration {
 		}
 
 		Object result = ((Map<String, Object>) target).get(index);
-		if (null == result) {
-			throw new IllegalArgumentException(String.format(
-					"您提供的配置文件有误. 路径[%s]值为null，datax无法识别该配置. 请检查您的配置并作出修改.", index));
-		}
+//		if (null == result) {
+//			throw new IllegalArgumentException(String.format(
+//					"您提供的配置文件有误. 路径[%s]值为null，datax无法识别该配置. 请检查您的配置并作出修改.", index));
+//		}
 
 		return result;
 	}

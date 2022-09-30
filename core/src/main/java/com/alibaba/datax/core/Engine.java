@@ -129,6 +129,7 @@ public class Engine {
         CommandLine cl = parser.parse(options, args);
 
         String jobPath = cl.getOptionValue("job");
+        System.out.println(jobPath);
 
         // 如果用户没有明确指定jobid, 则 datax.py 会指定 jobid 默认值为-1
         String jobIdString = cl.getOptionValue("jobid");
@@ -203,6 +204,7 @@ public class Engine {
 
     public static void main(String[] args) throws Exception {
         int exitCode = 0;
+        System.out.println(args);
         try {
             Engine.entry(args);
         } catch (Throwable e) {

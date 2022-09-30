@@ -1,5 +1,9 @@
 package com.alibaba.datax.plugin.writer.elasticsearchwriter;
 
+import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.BulkResponse;
+import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import co.elastic.clients.elasticsearch.core.bulk.CreateOperation;
 import com.alibaba.datax.common.element.Column;
 import com.alibaba.datax.common.element.Record;
 import com.alibaba.datax.common.exception.DataXException;
@@ -22,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.util.*;
 import java.util.concurrent.Callable;
 
@@ -37,7 +40,7 @@ public class ESWriter extends Writer {
         @Override
         public void init() {
             this.conf = super.getPluginJobConf();
-        }
+        }       //得到参数
 
         @Override
         public void prepare() {
@@ -75,7 +78,7 @@ public class ESWriter extends Writer {
             } catch (Exception ex) {
                 throw DataXException.asDataXException(ESWriterErrorCode.ES_MAPPINGS, ex.toString());
             }
-            esClient.closeJestClient();
+            esClient.closeclient();
         }
 
         private String genMappings(String typeName) {
@@ -281,13 +284,13 @@ public class ESWriter extends Writer {
 
             if (!writerBuffer.isEmpty()) {
                 total += doBatchInsert(writerBuffer);
-                writerBuffer.clear();
+                writerBuffer.clear();      //清空
             }
 
             String msg = String.format("task end, write size :%d", total);
             getTaskPluginCollector().collectMessage("writesize", String.valueOf(total));
             log.info(msg);
-            esClient.closeJestClient();
+            esClient.closeclient();
         }
 
         private String getDateStr(ESColumn esColumn, Column column) {
@@ -312,13 +315,14 @@ public class ESWriter extends Writer {
         private long doBatchInsert(final List<Record> writerBuffer) {
             Map<String, Object> data = null;
             final Bulk.Builder bulkaction = new Bulk.Builder().defaultIndex(this.index).defaultType(this.type);
+
             for (Record record : writerBuffer) {
                 data = new HashMap<String, Object>();
                 String id = null;
                 for (int i = 0; i < record.getColumnNumber(); i++) {
                     Column column = record.getColumn(i);
                     String columnName = columnList.get(i).getName();
-                    ESFieldType columnType = typeList.get(i);
+                    ESFieldType columnType = typeList.get(i);          //使用了一个东西
                     //如果是数组类型，那它传入的必是字符串类型
                     if (columnList.get(i).isArray() != null && columnList.get(i).isArray()) {
                         String[] dataList = column.asString().split(splitter);
@@ -384,14 +388,44 @@ public class ESWriter extends Writer {
                         }
                     }
                 }
+                //这里面得到了entries，然后用operation加入其中
+                List<BulkOperation> bulkOperations = new ArrayList<BulkOperation>();
+
 
                 if (id == null) {
+
+                    for (Map.Entry<String, Object> Entry : data.entrySet()) {
+                        CreateOperation<Map.Entry<String, Object>> createOperation = new CreateOperation.Builder<Map.Entry<String,
+                                Object>>().document(Entry).index(this.index).build();
+                        BulkOperation bulkOperation = new BulkOperation.Builder().create(createOperation).build();
+                        bulkOperations.add(bulkOperation);
+                    }
+
                     //id = UUID.randomUUID().toString();
-                    bulkaction.addAction(new Index.Builder(data).build());
+//                    BulkRequest.Builder builder1 = new BulkRequest.Builder();
+//                    new CreateOperation.Builder<Map<String, Object>>().document(data).build();
+//                    bulkaction.addAction(new Index.Builder(data).build());
                 } else {
-                    bulkaction.addAction(new Index.Builder(data).id(id).build());
+                    for (Map.Entry<String, Object> Entry : data.entrySet()) {
+                        CreateOperation<Map.Entry<String, Object>> createOperation = new CreateOperation.Builder<Map.Entry<String,
+                                Object>>().document(Entry).index(this.index).id(id).build();
+                        BulkOperation bulkOperation = new BulkOperation.Builder().create(createOperation).build();
+                        bulkOperations.add(bulkOperation);
+                    }
+//                    bulkaction.addAction(new Index.Builder(data).id(id).build());
+                }
+                BulkRequest bulkRequest = new BulkRequest.Builder().operations(bulkOperations).build();
+                try {
+                    BulkResponse bulk = esClient.esClient.bulk(bulkRequest);
+                    log.info("成功添加bulk数据"+bulk.toString());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
+
+            //以下是重试
+
+            //TODO: 需要改写为es8.x
 
             try {
                 return RetryUtil.executeWithRetry(new Callable<Integer>() {
@@ -448,13 +482,14 @@ public class ESWriter extends Writer {
             return 0;
         }
 
+        //由于Job中进行了post，没有需要post的
         @Override
         public void post() {
         }
 
         @Override
         public void destroy() {
-            esClient.closeJestClient();
+            esClient.closeclient();
         }
     }
 }

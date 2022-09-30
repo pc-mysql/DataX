@@ -67,7 +67,6 @@ public class App {
         }
         ElasticsearchIndicesClient indices = esClient.indices();
         new CreateIndexRequest.Builder().index("index_test").build();
-        indices.create()
 //        RestHighLevelClient client = new RestHighLevelClient(
 //                RestClient.builder(
 //                        new HttpHost(IP, PORT, "http")).setHttpClientConfigCallback(new RestClientBuilder
