@@ -76,7 +76,7 @@ public class ESWriter extends Writer {
                     throw new IOException("create index or mapping failed");
                 }
             } catch (Exception ex) {
-                throw DataXException.asDataXException(ESWriterErrorCode.ES_MAPPINGS, ex.toString());
+                throw DataXException.asDataXException(ESWriterErrorCode.ES_MAPPINGS, ex.toString());        //如果在这个阶段错误
             }
             esClient.closeclient();
         }

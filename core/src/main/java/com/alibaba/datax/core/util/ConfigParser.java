@@ -146,7 +146,7 @@ public final class ConfigParser {
     }
 
 
-    public static Configuration parseOnePluginConfig(final String path,
+    public static Configuration parseOnePluginConfig(final String path, //如何加载插件
                                                      final String type,
                                                      Set<String> pluginSet, List<String> wantPluginNames) {
         String filePath = path + File.separator + "plugin.json";
@@ -180,7 +180,7 @@ public final class ConfigParser {
         return result;
     }
 
-    private static List<String> getDirAsList(String path) {
+    private static List<String> getDirAsList(String path) { //没有打包进去
         List<String> result = new ArrayList<String>();
 
         String[] paths = new File(path).list();

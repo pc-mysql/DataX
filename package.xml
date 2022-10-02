@@ -4,7 +4,7 @@
         xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0 http://maven.apache.org/xsd/assembly-1.1.0.xsd">
     <id></id>
     <formats>
-        <format>tar.gz</format>
+        <format>tar.gz</format>     <!-- 用來打包 !-->
         <format>dir</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
@@ -373,6 +373,13 @@
         </fileSet>
         <fileSet>
             <directory>elasticsearchwriter/target/datax/</directory>
+            <includes>
+                <include>**/*.*</include>
+            </includes>
+            <outputDirectory>datax</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>elasticsearchwriter2/target/datax/</directory>
             <includes>
                 <include>**/*.*</include>
             </includes>

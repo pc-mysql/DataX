@@ -65,10 +65,10 @@ public class ESClient {
                                    int readTimeout,
                                    boolean compression,
                                    boolean discovery) {
-
+        System.out.println("我已经开始创建esclient了");
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         http = RestClient.builder(
-                new HttpHost(endpoint)).setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
+                new HttpHost("localhost", 9300, "http")).setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
             public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpClientBuilder) {
                 httpClientBuilder.disableAuthCaching();
                 return httpClientBuilder.setMaxConnTotal(200);
@@ -105,31 +105,32 @@ public class ESClient {
         esClient = new ElasticsearchClient(transport);      //得到client
         esindices  = esClient.indices();
 
-        JestClientFactory factory = new JestClientFactory();
-        Builder httpClientConfig = new HttpClientConfig
-                .Builder(endpoint)
-                .setPreemptiveAuth(new HttpHost(endpoint))
-                .multiThreaded(multiThread)
-                .connTimeout(30000)
-                .readTimeout(readTimeout)
-                .maxTotalConnection(200)
-                .requestCompressionEnabled(compression)
-                .discoveryEnabled(discovery)
-                .discoveryFrequency(5l, TimeUnit.MINUTES);
-
-        if (!("".equals(user) || "".equals(passwd))) {
-            httpClientConfig.defaultCredentials(user, passwd);
-        }
-
-        factory.setHttpClientConfig(httpClientConfig.build());
-
-        jestClient = factory.getObject();
+//        JestClientFactory factory = new JestClientFactory();
+//        Builder httpClientConfig = new HttpClientConfig
+//                .Builder(endpoint)
+//                .setPreemptiveAuth(new HttpHost(endpoint))
+//                .multiThreaded(multiThread)
+//                .connTimeout(30000)
+//                .readTimeout(readTimeout)
+//                .maxTotalConnection(200)
+//                .requestCompressionEnabled(compression)
+//                .discoveryEnabled(discovery)
+//                .discoveryFrequency(5l, TimeUnit.MINUTES);
+//
+//        if (!("".equals(user) || "".equals(passwd))) {
+//            httpClientConfig.defaultCredentials(user, passwd);
+//        }
+//
+//        factory.setHttpClientConfig(httpClientConfig.build());
+//
+//        jestClient = factory.getObject();
     }
 
     public boolean indicesExists(String indexName) throws Exception {
         boolean isIndicesExists = false;
         ExistsRequest existsRequest = new ExistsRequest.Builder().index(indexName).build();
         boolean value = esindices.exists(existsRequest).value();
+//        esindices.exists(existsRequest).value();
         if (! value ) {
             log.warn(existsRequest.toString());
             isIndicesExists = false;

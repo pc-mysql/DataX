@@ -38,14 +38,14 @@ public class ESClient {
         return jestClient;
     }
 
-    public void createClient(String endpoint,
+    public void createClient(      String endpoint,
                                    String user,
                                    String passwd,
                                    boolean multiThread,
                                    int readTimeout,
                                    boolean compression,
-                                   boolean discovery) {
-
+                                   boolean discovery   ) {
+//        System.out.println("我已经开始创建esclient了");
         JestClientFactory factory = new JestClientFactory();
         Builder httpClientConfig = new HttpClientConfig
                 .Builder(endpoint)

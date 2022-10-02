@@ -203,6 +203,7 @@ public class Engine {
     }
 
     public static void main(String[] args) throws Exception {
+        System.out.println(System.getProperty("java.class.path"));
         int exitCode = 0;
         System.out.println(args);
         try {
