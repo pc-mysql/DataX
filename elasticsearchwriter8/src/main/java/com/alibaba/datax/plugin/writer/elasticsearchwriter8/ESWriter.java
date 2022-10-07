@@ -1,9 +1,10 @@
-package com.alibaba.datax.plugin.writer.elasticsearchwriter;
+package com.alibaba.datax.plugin.writer.elasticsearchwriter8;
 
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
-import co.elastic.clients.elasticsearch.core.bulk.CreateOperation;
+import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
+import co.elastic.clients.elasticsearch.core.bulk.IndexOperation;
 import com.alibaba.datax.common.element.Column;
 import com.alibaba.datax.common.element.Record;
 import com.alibaba.datax.common.exception.DataXException;
@@ -14,10 +15,7 @@ import com.alibaba.datax.common.util.RetryUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
-import io.searchbox.client.JestResult;
-import io.searchbox.core.Bulk;
-import io.searchbox.core.BulkResult;
-import io.searchbox.core.Index;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
@@ -26,8 +24,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.Callable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ESWriter extends Writer {
     private final static String WRITE_COLUMNS = "write_columns";
@@ -171,10 +172,8 @@ public class ESWriter extends Writer {
             log.info(JSON.toJSONString(columnList));
 
             Map<String, Object> rootMappings = new HashMap<String, Object>();
-            Map<String, Object> typeMappings = new HashMap<String, Object>();
-            typeMappings.put("properties", propMap);
-            rootMappings.put(typeName, typeMappings);
-
+            //不再有type
+            rootMappings.put("properties", propMap);
             mappings = JSON.toJSONString(rootMappings);
 
             if (mappings == null || "".equals(mappings)) {
@@ -313,16 +312,14 @@ public class ESWriter extends Writer {
         }
 
         private long doBatchInsert(final List<Record> writerBuffer) {
-            Map<String, Object> data = null;
-            final Bulk.Builder bulkaction = new Bulk.Builder().defaultIndex(this.index).defaultType(this.type);
-
+            List<BulkOperation> bulkOperations = new ArrayList<>();
+            Map<String, Object> data = new HashMap<String, Object>();
             for (Record record : writerBuffer) {
-                data = new HashMap<String, Object>();
                 String id = null;
                 for (int i = 0; i < record.getColumnNumber(); i++) {
                     Column column = record.getColumn(i);
                     String columnName = columnList.get(i).getName();
-                    ESFieldType columnType = typeList.get(i);          //使用了一个东西
+                    ESFieldType columnType = typeList.get(i);
                     //如果是数组类型，那它传入的必是字符串类型
                     if (columnList.get(i).isArray() != null && columnList.get(i).isArray()) {
                         String[] dataList = column.asString().split(splitter);
@@ -388,89 +385,44 @@ public class ESWriter extends Writer {
                         }
                     }
                 }
-                //这里面得到了entries，然后用operation加入其中
-                List<BulkOperation> bulkOperations = new ArrayList<BulkOperation>();
-
-
+                //lambda表达式需要将data作为final,可能有性能开销,先这么处理
                 if (id == null) {
-
-                    for (Map.Entry<String, Object> Entry : data.entrySet()) {
-                        CreateOperation<Map.Entry<String, Object>> createOperation = new CreateOperation.Builder<Map.Entry<String,
-                                Object>>().document(Entry).index(this.index).build();
-                        BulkOperation bulkOperation = new BulkOperation.Builder().create(createOperation).build();
-                        bulkOperations.add(bulkOperation);
-                    }
-
-                    //id = UUID.randomUUID().toString();
-//                    BulkRequest.Builder builder1 = new BulkRequest.Builder();
-//                    new CreateOperation.Builder<Map<String, Object>>().document(data).build();
-//                    bulkaction.addAction(new Index.Builder(data).build());
+                    bulkOperations.add(new BulkOperation.Builder().index(new IndexOperation.Builder<>().document(data).build()).build());
                 } else {
-                    for (Map.Entry<String, Object> Entry : data.entrySet()) {
-                        CreateOperation<Map.Entry<String, Object>> createOperation = new CreateOperation.Builder<Map.Entry<String,
-                                Object>>().document(Entry).index(this.index).id(id).build();
-                        BulkOperation bulkOperation = new BulkOperation.Builder().create(createOperation).build();
-                        bulkOperations.add(bulkOperation);
-                    }
-//                    bulkaction.addAction(new Index.Builder(data).id(id).build());
-                }
-                BulkRequest bulkRequest = new BulkRequest.Builder().operations(bulkOperations).build();
-                try {
-                    BulkResponse bulk = esClient.esClient.bulk(bulkRequest);
-                    log.info("成功添加bulk数据"+bulk.toString());
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    bulkOperations.add(new BulkOperation.Builder().index(new IndexOperation.Builder<>().document(data).id(id).build()).build());
                 }
             }
-
-            //以下是重试
-
-            //TODO: 需要改写为es8.x
-
+            final BulkRequest bulkRequest = BulkRequest.of(x -> x.index(this.index).operations(bulkOperations));
             try {
-                return RetryUtil.executeWithRetry(new Callable<Integer>() {
-                    @Override
-                    public Integer call() throws Exception {
-                        JestResult jestResult = esClient.bulkInsert(bulkaction, 1);     //实际插入过程
-                        if (jestResult.isSucceeded()) {
-                            return writerBuffer.size();
-                        }
-
-                        String msg = String.format("response code: [%d] error :[%s]", jestResult.getResponseCode(), jestResult.getErrorMessage());
-                        log.warn(msg);
-                        if (esClient.isBulkResult(jestResult)) {
-                            BulkResult brst = (BulkResult) jestResult;
-                            List<BulkResult.BulkResultItem> failedItems = brst.getFailedItems();
-                            for (BulkResult.BulkResultItem item : failedItems) {
-                                if (item.status != 400) {
-                                    // 400 BAD_REQUEST  如果非数据异常,请求异常,则不允许忽略
-                                    throw DataXException.asDataXException(ESWriterErrorCode.ES_INDEX_INSERT, String.format("status:[%d], error: %s", item.status, item.error));
-                                } else {
-                                    // 如果用户选择不忽略解析错误,则抛异常,默认为忽略
-                                    if (!Key.isIgnoreParseError(conf)) {
-                                        throw DataXException.asDataXException(ESWriterErrorCode.ES_INDEX_INSERT, String.format("status:[%d], error: %s, config not ignoreParseError so throw this error", item.status, item.error));
-                                    }
-                                }
-                            }
-
-                            List<BulkResult.BulkResultItem> items = brst.getItems();
-                            for (int idx = 0; idx < items.size(); ++idx) {
-                                BulkResult.BulkResultItem item = items.get(idx);
-                                if (item.error != null && !"".equals(item.error)) {
-                                    getTaskPluginCollector().collectDirtyRecord(writerBuffer.get(idx), String.format("status:[%d], error: %s", item.status, item.error));
-                                }
-                            }
-                            return writerBuffer.size() - brst.getFailedItems().size();
+                return RetryUtil.executeWithRetry(() -> {
+                    BulkResponse bulkResponse = esClient.bulkInsert(bulkRequest);     //实际插入过程
+                    if (!bulkResponse.errors()) {
+                        return writerBuffer.size();
+                    }
+                    List<BulkResponseItem> failedItems = bulkResponse
+                            .items()
+                            .stream()
+                            .filter(item -> !ESResponseStatus.successStatus(item.status())).collect(Collectors.toList());
+                    for (BulkResponseItem item : failedItems) {
+                        if (item.status() != 400) {
+                            // 400 BAD_REQUEST  如果非数据异常,请求异常,则不允许忽略
+                            throw DataXException.asDataXException(ESWriterErrorCode.ES_INDEX_INSERT, String.format("status:[%d], error: %s", item.status(), item.error()));
                         } else {
-                            Integer status = esClient.getStatus(jestResult);
-                            switch (status) {
-                                case 429: //TOO_MANY_REQUESTS
-                                    log.warn("server response too many requests, so auto reduce speed");
-                                    break;
+                            // 如果用户选择不忽略解析错误,则抛异常,默认为忽略
+                            if (!Key.isIgnoreParseError(conf)) {
+                                throw DataXException.asDataXException(ESWriterErrorCode.ES_INDEX_INSERT, String.format("status:[%d], error: %s, config not ignoreParseError so throw this error", item.status(), item.error()));
                             }
-                            throw DataXException.asDataXException(ESWriterErrorCode.ES_INDEX_INSERT, jestResult.getErrorMessage());
                         }
                     }
+                    List<BulkResponseItem> items = bulkResponse.items();
+                    for (int idx = 0; idx < items.size(); ++idx) {
+                        BulkResponseItem item = items.get(idx);
+                        if (item.error() != null && !StringUtils.isEmpty(item.error().toString())) {
+                            getTaskPluginCollector().collectDirtyRecord(writerBuffer.get(idx), String.format("status:[%d], error: %s", item.status(), item.error()));
+                        }
+                    }
+                    return writerBuffer.size() - failedItems.size();
+
                 }, trySize, 60000L, true);
             } catch (Exception e) {
                 if (Key.isIgnoreWriteError(this.conf)) {

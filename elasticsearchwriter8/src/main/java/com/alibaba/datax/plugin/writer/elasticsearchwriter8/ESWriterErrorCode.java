@@ -1,4 +1,4 @@
-package com.alibaba.datax.plugin.writer.elasticsearchwriter;
+package com.alibaba.datax.plugin.writer.elasticsearchwriter8;
 
 import com.alibaba.datax.common.spi.ErrorCode;
 

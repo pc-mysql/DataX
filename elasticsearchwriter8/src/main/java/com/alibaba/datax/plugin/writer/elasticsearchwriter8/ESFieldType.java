@@ -1,4 +1,4 @@
-package com.alibaba.datax.plugin.writer.elasticsearchwriter;
+package com.alibaba.datax.plugin.writer.elasticsearchwriter8;
 
 /**
  * Created by xiongfeng.bxf on 17/3/1.

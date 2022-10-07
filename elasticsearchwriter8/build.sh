@@ -6,9 +6,9 @@ mvn clean package -DskipTests assembly:assembly
 
 cd $SCRIPT_HOME/target/datax/plugin/writer/
 
-if [ -d "eswriter" ]; then
-    tar -zcvf eswriter.tgz eswriter
-    cp eswriter.tgz $SCRIPT_HOME
+if [ -d "eswriter8" ]; then
+    tar -zcvf eswriter8.tgz eswriter8
+    cp eswriter8.tgz $SCRIPT_HOME
     cd $SCRIPT_HOME
 ansible-playbook -i hosts main.yml -u vagrant -k
 fi
